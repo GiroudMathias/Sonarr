@@ -79,18 +79,24 @@ namespace NzbDrone.Integration.Test.Client
             Delete(request);
         }
 
-        public List<dynamic> InvalidPost(TResource body)
+        public object InvalidGet(int id, HttpStatusCode statusCode = HttpStatusCode.NotFound)
         {
-            var request = BuildRequest();
-            request.AddBody(body);
-            return Post<List<dynamic>>(request, HttpStatusCode.BadRequest);
+            var request = BuildRequest(id.ToString());
+            return Get<object>(request, statusCode);
         }
 
-        public List<dynamic> InvalidPut(TResource body)
+        public object InvalidPost(TResource body, HttpStatusCode statusCode = HttpStatusCode.BadRequest)
         {
             var request = BuildRequest();
             request.AddBody(body);
-            return Put<List<dynamic>>(request, HttpStatusCode.BadRequest);
+            return Post<object>(request, statusCode);
+        }
+
+        public object InvalidPut(TResource body, HttpStatusCode statusCode = HttpStatusCode.BadRequest)
+        {
+            var request = BuildRequest();
+            request.AddBody(body);
+            return Put<object>(request, statusCode);
         }
 
         public RestRequest BuildRequest(string command = "")

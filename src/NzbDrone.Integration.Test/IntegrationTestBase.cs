@@ -12,6 +12,7 @@ using NUnit.Framework;
 using NzbDrone.Api.Blacklist;
 using NzbDrone.Api.Commands;
 using NzbDrone.Api.Config;
+using NzbDrone.Api.DownloadClient;
 using NzbDrone.Api.Episodes;
 using NzbDrone.Api.History;
 using NzbDrone.Api.RootFolders;
@@ -262,6 +263,51 @@ namespace NzbDrone.Integration.Test
             }
 
             return tag;
+        }
+
+        public void EnsureNoTag(string tagLabel)
+        {
+            var tag = Tags.All().FirstOrDefault(v => v.Label == tagLabel);
+
+            if (tag != null)
+            {
+                Tags.Delete(tag.Id);
+            }
+        }
+
+        public DownloadClientResource EnsureDownloadClient(bool enabled = true)
+        {
+            var client = DownloadClients.All().FirstOrDefault(v => v.Name == "Test UsenetBlackhole");
+
+            if (client == null)
+            {
+                var schema = DownloadClients.Schema().First(v => v.Implementation == "UsenetBlackhole");
+
+                schema.Enable = enabled;
+                schema.Name = "Test UsenetBlackhole";
+                schema.Fields.First(v => v.Name == "WatchFolder").Value = GetTempDirectory("Download", "UsenetBlackhole", "Watch");
+                schema.Fields.First(v => v.Name == "NzbFolder").Value = GetTempDirectory("Download", "UsenetBlackhole", "Nzb");
+
+                client = DownloadClients.Post(schema);
+            }
+            else if (client.Enable != enabled)
+            {
+                client.Enable = enabled;
+
+                client = DownloadClients.Put(client);
+            }
+
+            return client;
+        }
+
+        public void EnsureNoDownloadClient()
+        {
+            var clients = DownloadClients.All();
+
+            foreach (var client in clients)
+            {
+                DownloadClients.Delete(client.Id);
+            }
         }
     }
 }
