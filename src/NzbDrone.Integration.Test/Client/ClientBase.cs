@@ -10,25 +10,71 @@ using System.Linq;
 
 namespace NzbDrone.Integration.Test.Client
 {
-    public class ClientBase<TResource> where TResource : RestResource, new()
+    public class ClientBase
     {
-        private readonly IRestClient _restClient;
-        private readonly string _resource;
-        private readonly string _apiKey;
-        private readonly Logger _logger;
+        protected readonly IRestClient _restClient;
+        protected readonly string _resource;
+        protected readonly string _apiKey;
+        protected readonly Logger _logger;
 
-        public ClientBase(IRestClient restClient, string apiKey, string resource = null)
+        public ClientBase(IRestClient restClient, string apiKey, string resource)
         {
-            if (resource == null)
-            {
-                resource = new TResource().ResourceName;
-            }
-
             _restClient = restClient;
             _resource = resource;
             _apiKey = apiKey;
 
             _logger = LogManager.GetLogger("REST");
+        }
+
+        public RestRequest BuildRequest(string command = "")
+        {
+            var request = new RestRequest(_resource + "/" + command.Trim('/'))
+            {
+                RequestFormat = DataFormat.Json,
+            };
+
+            request.AddHeader("Authorization", _apiKey);
+            request.AddHeader("X-Api-Key", _apiKey);
+
+            return request;
+        }
+
+        public T Execute<T>(IRestRequest request, HttpStatusCode statusCode) where T : class, new()
+        {
+            _logger.Info("{0}: {1}", request.Method, _restClient.BuildUri(request));
+
+            var response = _restClient.Execute(request);
+            _logger.Info("Response: {0}", response.Content);
+
+            if (response.ErrorException != null)
+            {
+                throw response.ErrorException;
+            }
+
+            AssertDisableCache(response.Headers);
+
+            response.ErrorMessage.Should().BeNullOrWhiteSpace();
+
+            response.StatusCode.Should().Be(statusCode);
+
+            return Json.Deserialize<T>(response.Content);
+        }
+
+        private static void AssertDisableCache(IList<Parameter> headers)
+        {
+            headers.Single(c => c.Name == "Cache-Control").Value.Should().Be("no-cache, no-store, must-revalidate");
+            headers.Single(c => c.Name == "Pragma").Value.Should().Be("no-cache");
+            headers.Single(c => c.Name == "Expires").Value.Should().Be("0");
+        }
+    }
+
+    public class ClientBase<TResource> : ClientBase
+        where TResource : RestResource, new()
+    {
+        public ClientBase(IRestClient restClient, string apiKey, string resource = null)
+            : base(restClient, apiKey, resource ?? new TResource().ResourceName)
+        {
+
         }
 
         public List<TResource> All()
@@ -99,19 +145,6 @@ namespace NzbDrone.Integration.Test.Client
             return Put<object>(request, statusCode);
         }
 
-        public RestRequest BuildRequest(string command = "")
-        {
-            var request = new RestRequest(_resource + "/" + command.Trim('/'))
-                {
-                    RequestFormat = DataFormat.Json,
-                };
-
-            request.AddHeader("Authorization", _apiKey);
-            request.AddHeader("X-Api-Key", _apiKey);
-
-            return request;
-        }
-
         public T Get<T>(IRestRequest request, HttpStatusCode statusCode = HttpStatusCode.OK) where T : class, new()
         {
             request.Method = Method.GET;
@@ -134,34 +167,6 @@ namespace NzbDrone.Integration.Test.Client
         {
             request.Method = Method.DELETE;
             Execute<object>(request, statusCode);
-        }
-
-        private T Execute<T>(IRestRequest request, HttpStatusCode statusCode) where T : class, new()
-        {
-            _logger.Info("{0}: {1}", request.Method, _restClient.BuildUri(request));
-
-            var response = _restClient.Execute(request);
-            _logger.Info("Response: {0}", response.Content);
-
-            if (response.ErrorException != null)
-            {
-                throw response.ErrorException;
-            }
-
-            AssertDisableCache(response.Headers);
-
-            response.ErrorMessage.Should().BeNullOrWhiteSpace();
-
-            response.StatusCode.Should().Be(statusCode);
-
-            return Json.Deserialize<T>(response.Content);
-        }
-
-        private static void AssertDisableCache(IList<Parameter> headers)
-        {
-            headers.Single(c => c.Name == "Cache-Control").Value.Should().Be("no-cache, no-store, must-revalidate");
-            headers.Single(c => c.Name == "Pragma").Value.Should().Be("no-cache");
-            headers.Single(c => c.Name == "Expires").Value.Should().Be("0");
         }
     }
 }
