@@ -74,7 +74,12 @@ namespace NzbDrone.Common.Http
 
         private void ConvertParameter(object value, out object data, out string summary)
         {
-            if (value is byte[])
+            if (value is SecretString)
+            {
+                data = value.ToJson();
+                summary = "\"(removed)\"";
+            }
+            else if (value is byte[])
             {
                 data = Convert.ToBase64String(value as byte[]);
                 summary = string.Format("[blob {0} bytes]", (value as byte[]).Length);

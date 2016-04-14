@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.IndexerSearch.Definitions;
+using NzbDrone.Common;
 
 namespace NzbDrone.Core.Indexers.BroadcastheNet
 {
@@ -181,7 +182,7 @@ namespace NzbDrone.Core.Indexers.BroadcastheNet
         private IEnumerable<IndexerRequest> GetPagedRequests(int maxPages, BroadcastheNetTorrentQuery parameters)
         {
             var builder = new JsonRpcRequestBuilder(Settings.BaseUrl)
-                .Call("getTorrents", Settings.ApiKey, parameters, PageSize, 0);
+                .Call("getTorrents", (SecretString)Settings.ApiKey, parameters, PageSize, 0);
             builder.SuppressHttpError = true;
 
             for (var page = 0; page < maxPages; page++)

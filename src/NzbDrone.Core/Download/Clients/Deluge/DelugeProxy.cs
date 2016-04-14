@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using Newtonsoft.Json.Linq;
 using NLog;
+using NzbDrone.Common;
 using NzbDrone.Common.Cache;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
@@ -92,7 +93,7 @@ namespace NzbDrone.Core.Download.Clients.Deluge
 
         public string AddTorrentFromFile(string filename, byte[] fileContent, DelugeSettings settings)
         {
-            var response = ProcessRequest<string>(settings, "core.add_torrent_file", filename, Convert.ToBase64String(fileContent), new JObject());
+            var response = ProcessRequest<string>(settings, "core.add_torrent_file", filename, fileContent, new JObject());
 
             return response;
         }
@@ -255,8 +256,7 @@ namespace NzbDrone.Core.Download.Clients.Deluge
             {
                 _authCookieCache.Remove(authKey);
 
-                var authLoginRequest = requestBuilder.Call("auth.login", settings.Password).Build();
-                authLoginRequest.ContentSummary = "auth.login(\"(removed)\")";
+                var authLoginRequest = requestBuilder.Call("auth.login", (SecretString)settings.Password).Build();
                 var response = _httpClient.Execute(authLoginRequest);
                 var result = Json.Deserialize<JsonRpcResponse<bool>>(response.Content);
                 if (!result.Result)
