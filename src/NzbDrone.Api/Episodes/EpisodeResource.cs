@@ -74,6 +74,8 @@ namespace NzbDrone.Api.Episodes
 
         public static List<EpisodeResource> ToResource(this IEnumerable<Episode> models)
         {
+            if (models == null) return null;
+
             return models.Select(ToResource).ToList();
         }
     }
