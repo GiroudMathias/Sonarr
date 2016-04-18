@@ -76,7 +76,7 @@ namespace NzbDrone.Common.Http
         {
             if (value is SecretString)
             {
-                data = value.ToJson();
+                data = value.ToString();
                 summary = "\"(removed)\"";
             }
             else if (value is byte[])
