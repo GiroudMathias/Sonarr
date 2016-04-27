@@ -110,6 +110,7 @@
     <Compile Include="ApiTests\EpisodeFileFixture.cs" />
     <Compile Include="ApiTests\FileSystemFixture.cs" />
     <Compile Include="ApiTests\SeriesLookupFixture.cs" />
+    <Compile Include="ApiTests\WantedFixture.cs" />
     <Compile Include="Client\ClientBase.cs" />
     <Compile Include="Client\EpisodeClient.cs" />
     <Compile Include="Client\IndexerClient.cs" />
