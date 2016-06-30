@@ -2,10 +2,13 @@
 using System.Data.SQLite;
 using Marr.Data;
 using Marr.Data.Reflection;
+using NLog;
 using NzbDrone.Common.Composition;
+using NzbDrone.Common.Disk;
+using NzbDrone.Common.EnvironmentInfo;
+using NzbDrone.Common.Extensions;
+using NzbDrone.Common.Instrumentation;
 using NzbDrone.Core.Datastore.Migration.Framework;
-using NzbDrone.Core.Instrumentation;
-using NzbDrone.Core.Messaging.Events;
 
 
 namespace NzbDrone.Core.Datastore
@@ -20,6 +23,10 @@ namespace NzbDrone.Core.Datastore
     {
         private readonly IMigrationController _migrationController;
         private readonly IConnectionStringFactory _connectionStringFactory;
+        private readonly IDiskProvider _diskProvider;
+        private readonly IAppFolderInfo _appFolderInfo;
+        private static readonly Logger Logger = NzbDroneLogger.GetLogger(typeof(DbFactory));
+
 
         static DbFactory()
         {
@@ -38,10 +45,15 @@ namespace NzbDrone.Core.Datastore
             container.Register<ILogDatabase>(logDb);
         }
 
-        public DbFactory(IMigrationController migrationController, IConnectionStringFactory connectionStringFactory)
+        public DbFactory(IMigrationController migrationController,
+                         IConnectionStringFactory connectionStringFactory,
+                         IDiskProvider diskProvider,
+                         IAppFolderInfo appFolderInfo)
         {
             _migrationController = migrationController;
             _connectionStringFactory = connectionStringFactory;
+            _diskProvider = diskProvider;
+            _appFolderInfo = appFolderInfo;
         }
 
         public IDatabase Create(MigrationType migrationType = MigrationType.Main)
@@ -72,7 +84,30 @@ namespace NzbDrone.Core.Datastore
                     }
             }
 
-            _migrationController.Migrate(connectionString, migrationContext);
+            try
+            {
+                _migrationController.Migrate(connectionString, migrationContext);
+            }
+            catch (SQLiteException ex)
+            {
+                var fileName = _connectionStringFactory.GetDatabasePath(connectionString);
+
+                if (migrationContext.MigrationType == MigrationType.Log)
+                {
+                    Logger.Warn(ex, "Logging database is corrupt, attempting to recreate it automatically");
+
+                    _diskProvider.DeleteFile(fileName);
+                    _diskProvider.DeleteFile(fileName + "-shm");
+                    _diskProvider.DeleteFile(fileName + "-wal");
+
+                    _migrationController.Migrate(connectionString, migrationContext);
+                }
+
+                else
+                {
+                    throw new CorruptDatabaseException("Database file: {0} is corrupt, restore from backup if available", ex, fileName);
+                }
+            }
 
             var db = new Database(migrationContext.MigrationType.ToString(), () =>
                 {
