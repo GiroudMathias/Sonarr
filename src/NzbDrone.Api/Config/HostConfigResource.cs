@@ -40,8 +40,9 @@ namespace NzbDrone.Api.Config
 
     public static class HostConfigResourceMapper
     {
-        public static HostConfigResource ToResource(this IConfigFileProvider model)
+        public static HostConfigResource ToResource(this IConfigFileProvider model, IConfigService configService)
         {
+            // TODO: Clean this mess up. don't mix data from multiple classes, use sub-resources instead?
             return new HostConfigResource
             {
                 BindAddress = model.BindAddress,
@@ -61,6 +62,14 @@ namespace NzbDrone.Api.Config
                 UpdateAutomatically = model.UpdateAutomatically,
                 UpdateMechanism = model.UpdateMechanism,
                 UpdateScriptPath = model.UpdateScriptPath,
+                ProxyEnabled = configService.ProxyEnabled,
+                ProxyType = configService.ProxyType,
+                ProxyHostname = configService.ProxyHostname,
+                ProxyPort = configService.ProxyPort,
+                ProxyUsername = configService.ProxyUsername,
+                ProxyPassword = configService.ProxyPassword,
+                ProxyBypassFilter = configService.ProxyBypassFilter,
+                ProxyBypassLocalAddresses = configService.ProxyBypassLocalAddresses
             };
         }
     }
